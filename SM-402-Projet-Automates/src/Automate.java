@@ -86,6 +86,11 @@ public class Automate {
         }
     }
 
+
+    /******************************************************************/
+    /*                          GET/SET                               */
+    /******************************************************************/
+
     public ArrayList<Etat> getEtatsInitiaux() {
         return etatsInitiaux;
     }
@@ -102,6 +107,14 @@ public class Automate {
         return alphabet;
     }
 
+    public ArrayList<Etat> getEtats() {
+        return etats;
+    }
+
+    /******************************************************************/
+    /*                            UTILS                               */
+    /******************************************************************/
+
     public Etat getEtatByName(String name) {
         for (Etat etat : this.etats) {
             if (Objects.equals(etat.getName(), name)) {
@@ -109,6 +122,67 @@ public class Automate {
             }
         }
         return null;
+    }
+
+    public boolean hasATransitionOn(Etat etat, String libelle) {
+
+        boolean hasOne = false;
+        for(Transition transition: this.getTransitionsByProvenance(etat)) {
+            if(Objects.equals(transition.getLibelle(), libelle)) {
+                hasOne = true;
+            }
+        }
+
+        return hasOne;
+
+    }
+
+    public void afficherAutomate() {
+
+        System.out.print("| Type | Etat | ");
+        for (String lettre : this.alphabet) {
+            System.out.print(lettre + " | ");
+        }
+
+        System.out.println("");
+
+        for(Etat etat : this.etats) {
+
+            if(this.etatsTerminaux.contains(etat) && this.etatsInitiaux.contains(etat)) {
+                System.out.print("|  E/S |  ");
+
+            } else if(this.etatsTerminaux.contains(etat)) {
+                System.out.print("|  S   |  ");
+
+            } else if(this.etatsInitiaux.contains(etat)) {
+                System.out.print("|  E   |  ");
+
+            } else {
+                System.out.print("|      |  ");
+            }
+
+            System.out.print(etat.getName() + "   | ");
+
+            ArrayList<Transition> transitionsArrayList = this.getTransitionsByProvenance(etat);
+            for(String lettre: this.alphabet) {
+
+                boolean isEmpty = true;
+                for(Transition transition: transitionsArrayList) {
+                    if(Objects.equals(transition.getLibelle(), lettre)) {
+                        System.out.print(transition.getDestination().getName());
+                        isEmpty = false;
+                    }
+                }
+
+                if(isEmpty) {
+                    System.out.print("-");
+                }
+
+                System.out.print(" | ");
+            }
+
+            System.out.println("");
+        }
     }
 
     public ArrayList<Transition> getTransitionsByProvenance(Etat etat) {
@@ -121,16 +195,69 @@ public class Automate {
         return transitions;
     }
 
+    public ArrayList<Transition> getTransitionsbyDestination(Etat etat) {
+        ArrayList<Transition> transitions = new ArrayList<Transition>();
+        for(Transition transition : this.transitions) {
+            if(Objects.equals(transition.getDestination().getName(), etat.getName())) {
+                transitions.add((transition));
+            }
+        }
+
+        return transitions;
+    }
+
+    /******************************************************************/
+    /*                       COMPLETION                               */
+    /******************************************************************/
+
     public boolean isComplete() {
         for(Etat etat : this.etats) {
             int nombreTransition = this.getTransitionsByProvenance(etat).size();
-            if(nombreTransition != 2) {
+            if(nombreTransition != this.getAlphabet().size()) {
                 return false;
+
+
             }
         }
 
         return true;
     }
 
+    public void complete() {
+
+        if(!this.isComplete()) {
+
+            // Création de l'état poubelle
+            Etat poubelle = new Etat("P");
+
+            for(Etat etat: this.etats) {
+
+                ArrayList<Transition> transitionFromState = this.getTransitionsByProvenance(etat);
+
+                // Il manque des transitions pour cette état
+                if(transitionFromState.size() < this.getAlphabet().size()) {
+
+                    for(int i = 0; i < this.getAlphabet().size(); i++) {
+                        if(!this.hasATransitionOn(etat, this.getAlphabet().get(i))) {
+                            Transition newTransition = new Transition(etat, poubelle, this.getAlphabet().get(i));
+                            this.transitions.add(newTransition);
+                        }
+
+                    }
+
+                }
+            }
+
+            // Ajout des transitions vers l'état poubelle
+            for(String lettre: this.alphabet) {
+                Transition transitionPoubelle = new Transition(poubelle, poubelle, lettre);
+                this.transitions.add(transitionPoubelle);
+            }
+            this.etats.add(poubelle);
+
+        } else {
+            System.out.println("[!] Cette automate est déjà complet");
+        }
+    }
 
 }

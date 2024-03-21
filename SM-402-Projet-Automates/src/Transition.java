@@ -15,6 +15,27 @@ public class Transition {
         System.out.println(this.provenance.getName() + "--" + this.libelle + "->" + this.destination.getName());
     }
 
+
+    @Override
+    public boolean equals(Object obj) {
+
+        boolean isEqual = false;
+
+        if(obj == null || obj.getClass() != this.getClass()) {
+            return isEqual;
+        } else {
+
+            final Transition transition = (Transition) obj;
+
+            if(transition.getLibelle() == this.libelle && transition.getDestination().getName() == this.destination.getName() && transition.getProvenance().getName() == this.provenance.getName()) {
+                isEqual = true;
+            }
+
+            return isEqual;
+        }
+
+    }
+
     public Etat getDestination() {
         return destination;
     }
