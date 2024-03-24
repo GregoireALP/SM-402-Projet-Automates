@@ -260,4 +260,65 @@ public class Automate {
         }
     }
 
+    /******************************************************************/
+    /*                       STANDARDISATION                          */
+    /******************************************************************/
+
+    public boolean isStandard() {
+
+        boolean isStandard = true;
+
+        // Il doit y avoir 1 seule entré
+        if(this.getEtatsInitiaux().size() != 1) {
+            isStandard =  false;
+
+        } else {
+
+            // Aucune transition ne doit revenir sur l'état initiale
+            for(Transition transition: this.getTransitions()) {
+                if(transition.getDestination() == this.getEtatsInitiaux().get(0)) {
+                    isStandard = false;
+                }
+            }
+        }
+
+        return isStandard;
+    }
+
+    public void standardise() {
+
+
+        if(!this.isStandard()) {
+
+            // Creation du nouvelle etat I
+            Etat initiale = new Etat("I");
+
+            // Pour chaque état initiale
+            for(Etat etat: this.getEtatsInitiaux()) {
+
+                // On récupère les transitions de ces états
+                ArrayList<Transition> transitions = getTransitionsByProvenance(etat);
+
+                // Pour chacune de ces transitions
+                for(Transition transition: transitions) {
+
+                    // On créer une nouvelle transition avec I en provenance
+                    Transition newTransition = new Transition(initiale, transition.getDestination(), transition.getLibelle());
+
+                    // On ajoute cette nouvelle transition à l'automate
+                    this.getTransitions().add(newTransition);
+                }
+            }
+
+            // TODO: Reconnaissance du mot vide
+
+            // On supprime les états initiaux et on ajoute I à l'automate
+            this.getEtatsInitiaux().clear();
+            this.getEtats().add(initiale);
+            this.getEtatsInitiaux().add(initiale);
+
+        } else {
+            System.out.println("[!] Cette automate est déjà standard");
+        }
+    }
 }
