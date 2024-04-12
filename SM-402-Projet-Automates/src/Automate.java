@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Automate {
 
@@ -111,6 +112,14 @@ public class Automate {
         return etats;
     }
 
+    public void setEtatsTerminaux(ArrayList<Etat> etatsTerminaux) {
+        this.etatsTerminaux = etatsTerminaux;
+    }
+
+    public void setEtatsInitiaux(ArrayList<Etat> etatsInitiaux) {
+        this.etatsInitiaux = etatsInitiaux;
+    }
+
     /******************************************************************/
     /*                            UTILS                               */
     /******************************************************************/
@@ -138,51 +147,106 @@ public class Automate {
     }
 
     public void afficherAutomate() {
+        int maxStateWidth = "Etat".length();  // Start with header width
+        int maxTypeWidth = "Type".length();  // Start with header width
+        Map<String, Integer> maxTransitionWidths = new HashMap<>();
 
-        System.out.print("| Type | Etat | ");
-        for (String lettre : this.alphabet) {
-            System.out.print(lettre + " | ");
+        // Initialize maxTransitionWidths with alphabet headers, and adjust for contents
+        for (String letter : this.alphabet) {
+            maxTransitionWidths.put(letter, letter.length());
         }
 
-        System.out.println("");
-
-        for(Etat etat : this.etats) {
-
-            if(this.etatsTerminaux.contains(etat) && this.etatsInitiaux.contains(etat)) {
-                System.out.print("|  E/S |  ");
-
-            } else if(this.etatsTerminaux.contains(etat)) {
-                System.out.print("|  S   |  ");
-
-            } else if(this.etatsInitiaux.contains(etat)) {
-                System.out.print("|  E   |  ");
-
-            } else {
-                System.out.print("|      |  ");
+        // Calculate max widths for states, types, and transitions
+        for (Etat etat : this.etats) {
+            maxStateWidth = Math.max(maxStateWidth, etat.getName().length());
+            ArrayList<Transition> transitions = this.getTransitionsByProvenance(etat);
+            for (Transition transition : transitions) {
+                String symbol = transition.getLibelle();
+                String destName = transition.getDestination().getName();
+                maxTransitionWidths.put(symbol, Math.max(maxTransitionWidths.get(symbol), destName.length()));
             }
+        }
 
-            System.out.print(etat.getName() + "   | ");
+        // Build the header format string
+        StringBuilder headerBuilder = new StringBuilder("╔");
+        headerBuilder.append("═".repeat(maxTypeWidth + 2));
+        headerBuilder.append("╦");
+        headerBuilder.append("═".repeat(maxStateWidth + 2));
+        for (String letter : this.alphabet) {
+            headerBuilder.append("╦");
+            headerBuilder.append("═".repeat(maxTransitionWidths.get(letter) + 2));
+        }
+        headerBuilder.append("╗");
+        System.out.println(headerBuilder);
 
-            ArrayList<Transition> transitionsArrayList = this.getTransitionsByProvenance(etat);
-            for(String lettre: this.alphabet) {
+        // Print header
+        String headerFormat = "║ %-"+maxTypeWidth+"s ║ %-"+maxStateWidth+"s ║ ";
+        System.out.print(String.format(headerFormat, "Type", "Etat"));
+        for (String letter : this.alphabet) {
+            System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", letter));
+        }
+        System.out.println();
 
-                boolean isEmpty = true;
-                for(Transition transition: transitionsArrayList) {
-                    if(Objects.equals(transition.getLibelle(), lettre)) {
-                        System.out.print(transition.getDestination().getName());
-                        isEmpty = false;
+        // Print each state row
+        for (Etat etat : this.etats) {
+            String type = this.etatsInitiaux.contains(etat) ? "E" : " ";
+            type = this.etatsTerminaux.contains(etat) ? type + "S" : type;
+
+            StringBuilder rowBuilder = new StringBuilder("╠");
+            rowBuilder.append("═".repeat(maxTypeWidth + 2));
+            rowBuilder.append("╬");
+            rowBuilder.append("═".repeat(maxStateWidth + 2));
+
+            for (String letter : this.alphabet) {
+                rowBuilder.append("╬");
+                rowBuilder.append("═".repeat(maxTransitionWidths.get(letter) + 2));
+            }
+            rowBuilder.append("╣");
+            System.out.println(rowBuilder.toString());
+
+            System.out.print(String.format(headerFormat, type.trim(), etat.getName()));
+            for (String letter : this.alphabet) {
+                boolean found = false;
+                for (Transition transition : this.getTransitionsByProvenance(etat)) {
+                    if (transition.getLibelle().equals(letter)) {
+                        System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", transition.getDestination().getName()));
+                        found = true;
+                        break;
                     }
                 }
-
-                if(isEmpty) {
-                    System.out.print("-");
+                if (!found) {
+                    System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", "-"));
                 }
-
-                System.out.print(" | ");
             }
-
-            System.out.println("");
+            System.out.println();
         }
+
+        // Closing border
+        StringBuilder footerBuilder = new StringBuilder("╚");
+        footerBuilder.append("═".repeat(maxTypeWidth + 2));
+        footerBuilder.append("╩");
+        footerBuilder.append("═".repeat(maxStateWidth + 2));
+        for (String letter : this.alphabet) {
+            footerBuilder.append("╩");
+            footerBuilder.append("═".repeat(maxTransitionWidths.get(letter) + 2));
+        }
+        footerBuilder.append("╝");
+        System.out.println(footerBuilder);
+    }
+
+
+    private Set<Etat> getNextStates(Etat state, String symbol) {
+        Set<Etat> result = new HashSet<>();
+        for (Transition transition : this.transitions) {
+            if (transition.getProvenance().equals(state) && transition.getLibelle().equals(symbol)) {
+                result.add(transition.getDestination());
+            }
+        }
+        return result;
+    }
+
+    private String stateSetToString(Set<Etat> states) {
+        return states.stream().map(Etat::getName).sorted().collect(Collectors.joining(""));
     }
 
     public ArrayList<Transition> getTransitionsByProvenance(Etat etat) {
@@ -321,4 +385,101 @@ public class Automate {
             System.out.println("[!] Cette automate est déjà standard");
         }
     }
+
+    /******************************************************************/
+    /*                       DETERMINISATION                          */
+    /******************************************************************/
+
+    public boolean isDeterminise() {
+        // Check every state to ensure only one transition per symbol in the alphabet
+        for (Etat etat : etats) {
+            ArrayList<Transition> transitionsFromState = getTransitionsByProvenance(etat);
+
+            // Use a set to track symbols for which transitions exist
+            HashSet<String> seenSymbols = new HashSet<>();
+
+            for (Transition transition : transitionsFromState) {
+                String symbol = transition.getLibelle();
+
+                // If we see the same symbol twice for this state, it's not deterministic
+                if (seenSymbols.contains(symbol)) {
+                    return false;  // Not deterministic
+                }
+                seenSymbols.add(symbol);
+            }
+        }
+
+        // If we've checked all states and found no conflicts, the automaton is deterministic
+        return true;
+    }
+
+
+    public void determinise() {
+        HashMap<String, Etat> newStates = new HashMap<>();
+        Queue<Set<Etat>> toProcess = new LinkedList<>();
+        Set<Etat> initialStateSet = new HashSet<>(this.etatsInitiaux);
+        Set<Etat> newFinalStates = new HashSet<>();
+
+        newStates.put(stateSetToString(initialStateSet), new Etat(stateSetToString(initialStateSet)));
+        if (!Collections.disjoint(initialStateSet, this.etatsTerminaux)) {
+            newFinalStates.add(newStates.get(stateSetToString(initialStateSet)));
+        }
+        toProcess.add(initialStateSet);
+
+        ArrayList<Transition> newTransitions = new ArrayList<>();
+
+        while (!toProcess.isEmpty()) {
+            Set<Etat> currentStateSet = toProcess.poll();
+            String currentStateString = stateSetToString(currentStateSet);
+
+            for (String symbol : this.alphabet) {
+                Set<Etat> nextStateSet = new HashSet<>();
+                for (Etat state : currentStateSet) {
+                    nextStateSet.addAll(getNextStates(state, symbol));
+                }
+
+                String nextStateString = stateSetToString(nextStateSet);
+                if (!newStates.containsKey(nextStateString)) {
+                    newStates.put(nextStateString, new Etat(nextStateString));
+                    toProcess.add(nextStateSet);
+                    if (!Collections.disjoint(nextStateSet, this.etatsTerminaux)) {
+                        newFinalStates.add(newStates.get(nextStateString));
+                    }
+                }
+
+                newTransitions.add(new Transition(newStates.get(currentStateString), newStates.get(nextStateString), symbol));
+            }
+        }
+
+        // Update the automaton's states and transitions
+        this.etats.clear();
+        this.etats.addAll(newStates.values());
+        this.etatsInitiaux.clear();
+        this.etatsInitiaux.add(newStates.get(stateSetToString(initialStateSet)));
+        this.etatsTerminaux.clear();
+        this.etatsTerminaux.addAll(newFinalStates);
+        this.transitions.clear();
+        this.transitions.addAll(newTransitions);
+    }
+
+    /******************************************************************/
+    /*                       COMPLEMENTARITY                          */
+    /******************************************************************/
+
+    public void complementarize() {
+
+
+        if(this.isDeterminise() && this.isComplete()) {
+
+            ArrayList<Etat> oldEtatsInitiaux = this.getEtatsInitiaux();
+
+            this.setEtatsInitiaux(this.getEtatsInitiaux());
+            this.setEtatsTerminaux(oldEtatsInitiaux);
+
+        } else {
+            System.out.println("[*] L'automate n'est pas complet et deterministe");
+        }
+    }
+
 }
+

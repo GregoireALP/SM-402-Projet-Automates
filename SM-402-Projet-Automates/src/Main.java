@@ -7,14 +7,13 @@ public class Main {
 
         Automate automate = new Automate("C:\\Users\\grego\\Documents\\GitHub\\SM-402-Projet-Automates\\SM-402-Projet-Automates\\src\\automate.txt");
 
+        automate.determinise();
+
         automate.afficherAutomate();
-        System.out.println(automate.isStandard());
 
-        automate.standardise();
+        automate.complementarize();
+
         automate.afficherAutomate();
-        System.out.println(automate.isStandard());
-
-
 
     }
 }
