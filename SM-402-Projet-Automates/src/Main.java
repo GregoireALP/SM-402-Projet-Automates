@@ -63,7 +63,8 @@ public class Main {
                                 3) Déterminiser automate
                                 4) Standardiser automate
                                 5) Complément automate
-                                6) Quitter cette automate
+                                6) Test de reconnaissance de mot
+                                7) Quitter cette automate
                                 
                                 Choix:
                                 """.formatted(res);
@@ -111,6 +112,18 @@ public class Main {
                                     break;
 
                                 case 6:
+                                    System.out.print("Entrer le mot à tester:");
+                                    String word = scanner.next();
+
+                                    boolean canRecognize = automate.recognize(word);
+                                    System.out.println(canRecognize ? "Le mot est reconnu par l'automate" : "Le mot n'est pas reconnu par l'automate");
+
+
+                                    // Idling
+                                    scanner.nextLine();
+                                    break;
+
+                                case 7:
                                     isAutomateRunning = false;
                                     break;
 

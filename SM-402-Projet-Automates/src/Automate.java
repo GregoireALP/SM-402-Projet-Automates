@@ -406,76 +406,56 @@ public class Automate {
 
 
     public void determinise() {
-        // Création d'une nouvelle liste d'états pour l'automate déterministe
-        ArrayList<Set<Etat>> newEtats = new ArrayList<>();
-        // Map pour suivre les transitions de chaque nouvel état
-        Map<Set<Etat>, Map<String, Set<Etat>>> newTransitions = new HashMap<>();
-        // Définir le nouvel état initial
-        Set<Etat> initialState = new HashSet<>(this.etatsInitiaux);
-        // File d'attente pour traiter tous les nouveaux états
-        Queue<Set<Etat>> toProcess = new LinkedList<>();
-        toProcess.add(initialState);
-        newEtats.add(initialState);
+        // Map pour suivre les nouveaux états (clé : nom combiné, valeur : ensemble d'états)
+        Map<String, Set<Etat>> newEtatsMap = new HashMap<>();
+        // Liste des transitions pour l'automate déterministe
+        List<Transition> newTransitions = new ArrayList<>();
+        // Queue pour gérer les nouveaux états à traiter
+        Queue<Set<Etat>> queue = new LinkedList<>();
 
-        while (!toProcess.isEmpty()) {
-            Set<Etat> current = toProcess.remove();
-            // Initialiser le mapping de transitions pour cet état
-            Map<String, Set<Etat>> currentTransitions = new HashMap<>();
+        // Créer l'état initial du déterministe
+        Set<Etat> initialSet = new HashSet<>(this.etatsInitiaux);
+        String initialName = initialSet.stream().map(Etat::getName).sorted().collect(Collectors.joining());
+        newEtatsMap.put(initialName, initialSet);
+        queue.add(initialSet);
 
-            // Pour chaque symbole de l'alphabet, trouver les transitions possibles
+        while (!queue.isEmpty()) {
+            Set<Etat> currentSet = queue.poll();
+            String currentName = currentSet.stream().map(Etat::getName).sorted().collect(Collectors.joining());
+
+            // Pour chaque symbole de l'alphabet
             for (String symbol : this.alphabet) {
-                Set<Etat> newState = new HashSet<>();
-                for (Etat e : current) {
-                    for (Transition t : getTransitionsByProvenanceAndSymbol(e, symbol)) {
-                        newState.add(t.getDestination());
-                    }
+                Set<Etat> nextSet = new HashSet<>();
+                for (Etat state : currentSet) {
+                    nextSet.addAll(getNextStates(state, symbol));
                 }
-                if (!newState.isEmpty()) {
-                    if (!newEtats.contains(newState)) {
-                        newEtats.add(newState);
-                        toProcess.add(newState);
+                if (!nextSet.isEmpty()) {
+                    String nextName = nextSet.stream().map(Etat::getName).sorted().collect(Collectors.joining());
+                    if (!newEtatsMap.containsKey(nextName)) {
+                        newEtatsMap.put(nextName, nextSet);
+                        queue.add(nextSet);
                     }
-                    currentTransitions.put(symbol, newState);
+                    newTransitions.add(new Transition(new Etat(currentName), new Etat(nextName), symbol));
                 }
             }
-            newTransitions.put(current, currentTransitions);
         }
 
         // Réinitialiser les états et transitions de l'automate pour utiliser les nouveaux
         this.etats.clear();
         this.transitions.clear();
-        for (Set<Etat> s : newEtats) {
-            Etat combinedState = new Etat(s.toString());
-            this.etats.add(combinedState);
-            if (s.stream().anyMatch(Etat::isFinal)) {
-                this.etatsTerminaux.add(combinedState);
+        newEtatsMap.forEach((name, set) -> {
+            Etat newState = new Etat(name);
+            this.etats.add(newState);
+            if (set.stream().anyMatch(Etat::isFinal)) {
+                this.etatsTerminaux.add(newState);
             }
-            if (s.equals(initialState)) {
+            if (name.equals(initialName)) {
                 this.etatsInitiaux.clear();
-                this.etatsInitiaux.add(combinedState);
+                this.etatsInitiaux.add(newState);
             }
-        }
-
-        // Ajouter les nouvelles transitions
-        for (Map.Entry<Set<Etat>, Map<String, Set<Etat>>> entry : newTransitions.entrySet()) {
-            Etat from = new Etat(entry.getKey().toString());
-            for (Map.Entry<String, Set<Etat>> trans : entry.getValue().entrySet()) {
-                Etat to = new Etat(trans.getValue().toString());
-                this.transitions.add(new Transition(from, to, trans.getKey()));
-            }
-        }
+        });
+        this.transitions.addAll(newTransitions);
     }
-
-    private ArrayList<Transition> getTransitionsByProvenanceAndSymbol(Etat etat, String symbol) {
-        ArrayList<Transition> result = new ArrayList<>();
-        for (Transition t : this.transitions) {
-            if (t.getProvenance().equals(etat) && t.getLibelle().equals(symbol)) {
-                result.add(t);
-            }
-        }
-        return result;
-    }
-
 
     /******************************************************************/
     /*                       COMPLEMENTARITY                          */
