@@ -13,4 +13,8 @@ public class Etat {
     public void setName(String name) {
         this.name = name;
     }
+
+    public boolean isFinal() {
+        return Automate.etatsTerminaux.contains(this);
+    }
 }

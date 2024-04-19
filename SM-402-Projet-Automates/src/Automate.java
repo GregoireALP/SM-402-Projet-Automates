@@ -6,8 +6,8 @@ import java.util.stream.Collectors;
 public class Automate {
 
     private ArrayList<Etat> etats = new ArrayList<Etat>();
-    private ArrayList<Etat> etatsInitiaux= new ArrayList<Etat>();
-    private ArrayList<Etat> etatsTerminaux= new ArrayList<Etat>();
+    public static ArrayList<Etat> etatsInitiaux= new ArrayList<Etat>();
+    public static ArrayList<Etat> etatsTerminaux= new ArrayList<Etat>();
 
     private ArrayList<String> alphabet = new ArrayList<String>();
 
@@ -234,7 +234,6 @@ public class Automate {
         System.out.println(footerBuilder);
     }
 
-
     private Set<Etat> getNextStates(Etat state, String symbol) {
         Set<Etat> result = new HashSet<>();
         for (Transition transition : this.transitions) {
@@ -246,7 +245,7 @@ public class Automate {
     }
 
     private String stateSetToString(Set<Etat> states) {
-        return states.stream().map(Etat::getName).sorted().collect(Collectors.joining(""));
+        return states.stream().map(Etat::getName).sorted().collect(Collectors.joining("."));
     }
 
     public ArrayList<Transition> getTransitionsByProvenance(Etat etat) {
@@ -270,6 +269,16 @@ public class Automate {
         return transitions;
     }
 
+    public Transition getTransition(Etat etat, String symbole) {
+        for(Transition transition: this.getTransitionsByProvenance(etat)) {
+            if(transition.getLibelle().equals(symbole)) {
+                return transition;
+            }
+        }
+
+        return null;
+    }
+
     /******************************************************************/
     /*                       COMPLETION                               */
     /******************************************************************/
@@ -287,40 +296,22 @@ public class Automate {
         return true;
     }
 
+    /**
+     * Complète l'automate en ajoutant un état poubelle.
+     * Cet état est utilisé pour toutes les transitions non définies dans l'automate initial.
+     */
     public void complete() {
+        Etat etatPoubelle = new Etat("P"); // Créer un nouvel état poubelle
+        this.etats.add(etatPoubelle); // Ajouter l'état poubelle à la liste des états
 
-        if(!this.isComplete()) {
-
-            // Création de l'état poubelle
-            Etat poubelle = new Etat("P");
-
-            for(Etat etat: this.etats) {
-
-                ArrayList<Transition> transitionFromState = this.getTransitionsByProvenance(etat);
-
-                // Il manque des transitions pour cette état
-                if(transitionFromState.size() < this.getAlphabet().size()) {
-
-                    for(int i = 0; i < this.getAlphabet().size(); i++) {
-                        if(!this.hasATransitionOn(etat, this.getAlphabet().get(i))) {
-                            Transition newTransition = new Transition(etat, poubelle, this.getAlphabet().get(i));
-                            this.transitions.add(newTransition);
-                        }
-
-                    }
-
+        // Vérifier chaque état pour chaque symbole de l'alphabet
+        for (Etat etat : this.etats) {
+            for (String symbole : this.alphabet) {
+                if (getTransition(etat, symbole) == null) {
+                    // Si aucune transition n'existe pour un symbole donné, ajouter une transition vers l'état poubelle
+                    this.transitions.add(new Transition(etat, etatPoubelle, symbole));
                 }
             }
-
-            // Ajout des transitions vers l'état poubelle
-            for(String lettre: this.alphabet) {
-                Transition transitionPoubelle = new Transition(poubelle, poubelle, lettre);
-                this.transitions.add(transitionPoubelle);
-            }
-            this.etats.add(poubelle);
-
-        } else {
-            System.out.println("[!] Cette automate est déjà complet");
         }
     }
 
@@ -415,70 +406,135 @@ public class Automate {
 
 
     public void determinise() {
-        HashMap<String, Etat> newStates = new HashMap<>();
+        // Création d'une nouvelle liste d'états pour l'automate déterministe
+        ArrayList<Set<Etat>> newEtats = new ArrayList<>();
+        // Map pour suivre les transitions de chaque nouvel état
+        Map<Set<Etat>, Map<String, Set<Etat>>> newTransitions = new HashMap<>();
+        // Définir le nouvel état initial
+        Set<Etat> initialState = new HashSet<>(this.etatsInitiaux);
+        // File d'attente pour traiter tous les nouveaux états
         Queue<Set<Etat>> toProcess = new LinkedList<>();
-        Set<Etat> initialStateSet = new HashSet<>(this.etatsInitiaux);
-        Set<Etat> newFinalStates = new HashSet<>();
-
-        newStates.put(stateSetToString(initialStateSet), new Etat(stateSetToString(initialStateSet)));
-        if (!Collections.disjoint(initialStateSet, this.etatsTerminaux)) {
-            newFinalStates.add(newStates.get(stateSetToString(initialStateSet)));
-        }
-        toProcess.add(initialStateSet);
-
-        ArrayList<Transition> newTransitions = new ArrayList<>();
+        toProcess.add(initialState);
+        newEtats.add(initialState);
 
         while (!toProcess.isEmpty()) {
-            Set<Etat> currentStateSet = toProcess.poll();
-            String currentStateString = stateSetToString(currentStateSet);
+            Set<Etat> current = toProcess.remove();
+            // Initialiser le mapping de transitions pour cet état
+            Map<String, Set<Etat>> currentTransitions = new HashMap<>();
 
+            // Pour chaque symbole de l'alphabet, trouver les transitions possibles
             for (String symbol : this.alphabet) {
-                Set<Etat> nextStateSet = new HashSet<>();
-                for (Etat state : currentStateSet) {
-                    nextStateSet.addAll(getNextStates(state, symbol));
-                }
-
-                String nextStateString = stateSetToString(nextStateSet);
-                if (!newStates.containsKey(nextStateString)) {
-                    newStates.put(nextStateString, new Etat(nextStateString));
-                    toProcess.add(nextStateSet);
-                    if (!Collections.disjoint(nextStateSet, this.etatsTerminaux)) {
-                        newFinalStates.add(newStates.get(nextStateString));
+                Set<Etat> newState = new HashSet<>();
+                for (Etat e : current) {
+                    for (Transition t : getTransitionsByProvenanceAndSymbol(e, symbol)) {
+                        newState.add(t.getDestination());
                     }
                 }
+                if (!newState.isEmpty()) {
+                    if (!newEtats.contains(newState)) {
+                        newEtats.add(newState);
+                        toProcess.add(newState);
+                    }
+                    currentTransitions.put(symbol, newState);
+                }
+            }
+            newTransitions.put(current, currentTransitions);
+        }
 
-                newTransitions.add(new Transition(newStates.get(currentStateString), newStates.get(nextStateString), symbol));
+        // Réinitialiser les états et transitions de l'automate pour utiliser les nouveaux
+        this.etats.clear();
+        this.transitions.clear();
+        for (Set<Etat> s : newEtats) {
+            Etat combinedState = new Etat(s.toString());
+            this.etats.add(combinedState);
+            if (s.stream().anyMatch(Etat::isFinal)) {
+                this.etatsTerminaux.add(combinedState);
+            }
+            if (s.equals(initialState)) {
+                this.etatsInitiaux.clear();
+                this.etatsInitiaux.add(combinedState);
             }
         }
 
-        // Update the automaton's states and transitions
-        this.etats.clear();
-        this.etats.addAll(newStates.values());
-        this.etatsInitiaux.clear();
-        this.etatsInitiaux.add(newStates.get(stateSetToString(initialStateSet)));
-        this.etatsTerminaux.clear();
-        this.etatsTerminaux.addAll(newFinalStates);
-        this.transitions.clear();
-        this.transitions.addAll(newTransitions);
+        // Ajouter les nouvelles transitions
+        for (Map.Entry<Set<Etat>, Map<String, Set<Etat>>> entry : newTransitions.entrySet()) {
+            Etat from = new Etat(entry.getKey().toString());
+            for (Map.Entry<String, Set<Etat>> trans : entry.getValue().entrySet()) {
+                Etat to = new Etat(trans.getValue().toString());
+                this.transitions.add(new Transition(from, to, trans.getKey()));
+            }
+        }
     }
+
+    private ArrayList<Transition> getTransitionsByProvenanceAndSymbol(Etat etat, String symbol) {
+        ArrayList<Transition> result = new ArrayList<>();
+        for (Transition t : this.transitions) {
+            if (t.getProvenance().equals(etat) && t.getLibelle().equals(symbol)) {
+                result.add(t);
+            }
+        }
+        return result;
+    }
+
 
     /******************************************************************/
     /*                       COMPLEMENTARITY                          */
     /******************************************************************/
 
+    /**
+     * Complémentarise l'automate : transforme l'automate pour qu'il accepte le langage complémentaire.
+     * L'automate doit être déterministe et complet pour que cette opération soit valide.
+     */
     public void complementarize() {
-
-
-        if(this.isDeterminise() && this.isComplete()) {
-
+        if (this.isDeterminise() && this.isComplete()) {
             ArrayList<Etat> oldEtatsInitiaux = this.getEtatsInitiaux();
-
             this.setEtatsInitiaux(this.getEtatsInitiaux());
             this.setEtatsTerminaux(oldEtatsInitiaux);
-
         } else {
             System.out.println("[*] L'automate n'est pas complet et deterministe");
         }
+    }
+
+
+    /******************************************************************/
+    /*                       WORDS RECOGNIZATION                      */
+    /******************************************************************/
+
+
+    public boolean recognize(String word) {
+        Set<Etat> currentStates = new HashSet<>(this.etatsInitiaux); // Start from all initial states
+
+        // Process each character in the word
+        for (int i = 0; i < word.length(); i++) {
+            char symbol = word.charAt(i);
+            Set<Etat> nextStates = new HashSet<>();
+
+            // Move to next states based on the current symbol
+            for (Etat state : currentStates) {
+                for (Transition transition : getTransitionsByProvenance(state)) {
+                    if (transition.getLibelle().equals(String.valueOf(symbol))) {
+                        nextStates.add(transition.getDestination());
+                    }
+                }
+            }
+
+            // Update current states with the next states
+            currentStates = nextStates;
+
+            // If no states are reachable, break early
+            if (currentStates.isEmpty()) {
+                return false;
+            }
+        }
+
+        // Check if any of the current states is a final state
+        for (Etat state : currentStates) {
+            if (this.etatsTerminaux.contains(state)) {
+                return true; // Word is accepted if any final state is reached
+            }
+        }
+
+        return false; // Word is not accepted if no final state is reached
     }
 
 }
