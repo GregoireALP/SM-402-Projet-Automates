@@ -15,6 +15,9 @@ public class Transition {
         System.out.println(this.provenance.getName() + "--" + this.libelle + "->" + this.destination.getName());
     }
 
+    public String toString() {
+        return this.provenance.getName() + " --" + this.libelle + "--> " + this.destination.getName();
+    }
 
     @Override
     public boolean equals(Object obj) {
