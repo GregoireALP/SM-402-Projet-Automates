@@ -6,10 +6,6 @@ import java.util.Scanner;
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
 
-    private static void clear() {
-        new ProcessBuilder("cls");
-    }
-
     public static void main(String[] args) {
 
 
@@ -38,7 +34,6 @@ public class Main {
 
         while(isRunning) {
 
-            clear();
             System.out.print(menu);
             String choice = scanner.nextLine();
 
@@ -46,9 +41,19 @@ public class Main {
                 switch (Integer.parseInt(choice)) {
 
                     case 1:
-                        clear();
                         System.out.print("Entrer le numéro de l'automate a tester:");
                         int res = scanner.nextInt();
+
+                        try {
+                            File file = new File(path + res + ".txt");
+                            if(!file.exists()) {
+                                System.out.println("[!] Automate introuvable");
+                                continue;
+                            }
+                        } catch (Exception e) {
+                            System.out.println("[!] Automate introuvable");
+                            break;
+                        }
 
                         Automate automate = new Automate(path + res + ".txt");
                         boolean isAutomateRunning = true;
@@ -139,7 +144,6 @@ public class Main {
 
 
                     case 2:
-                        clear();
                         File folder = new File(path);
                         File[] files = folder.listFiles();
 
