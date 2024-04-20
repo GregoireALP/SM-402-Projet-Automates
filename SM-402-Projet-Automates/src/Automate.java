@@ -124,6 +124,7 @@ public class Automate {
     /*                            UTILS                               */
     /******************************************************************/
 
+    // Fonction pour obtenir un état par son nom
     public Etat getEtatByName(String name) {
         for (Etat etat : this.etats) {
             if (Objects.equals(etat.getName(), name)) {
@@ -133,19 +134,7 @@ public class Automate {
         return null;
     }
 
-    public boolean hasATransitionOn(Etat etat, String libelle) {
-
-        boolean hasOne = false;
-        for(Transition transition: this.getTransitionsByProvenance(etat)) {
-            if(Objects.equals(transition.getLibelle(), libelle)) {
-                hasOne = true;
-            }
-        }
-
-        return hasOne;
-
-    }
-
+    // Fonction pour afficher l'automate
     public void afficherAutomate() {
         int maxStateWidth = "Etat".length();  // Start with header width
         int maxTypeWidth = "Type".length();  // Start with header width
@@ -162,8 +151,13 @@ public class Automate {
             ArrayList<Transition> transitions = this.getTransitionsByProvenance(etat);
             for (Transition transition : transitions) {
                 String symbol = transition.getLibelle();
-                String destName = transition.getDestination().getName();
-                maxTransitionWidths.put(symbol, Math.max(maxTransitionWidths.get(symbol), destName.length()));
+                // Accumulate destinations
+                String destNames = transitions.stream()
+                        .filter(t -> t.getProvenance().equals(etat) && t.getLibelle().equals(symbol))
+                        .map(t -> t.getDestination().getName())
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+                maxTransitionWidths.put(symbol, Math.max(maxTransitionWidths.get(symbol), destNames.length()));
             }
         }
 
@@ -206,48 +200,30 @@ public class Automate {
 
             System.out.print(String.format(headerFormat, type.trim(), etat.getName()));
             for (String letter : this.alphabet) {
-                boolean found = false;
-                for (Transition transition : this.getTransitionsByProvenance(etat)) {
-                    if (transition.getLibelle().equals(letter)) {
-                        System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", transition.getDestination().getName()));
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", "-"));
-                }
+                String destNames = transitions.stream()
+                        .filter(t -> t.getProvenance().equals(etat) && t.getLibelle().equals(letter))
+                        .map(t -> t.getDestination().getName())
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+
+                System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", destNames.isEmpty() ? "-" : destNames));
             }
             System.out.println();
         }
-
         // Closing border
         StringBuilder footerBuilder = new StringBuilder("╚");
-        footerBuilder.append("═".repeat(maxTypeWidth + 2));
-        footerBuilder.append("╩");
-        footerBuilder.append("═".repeat(maxStateWidth + 2));
         for (String letter : this.alphabet) {
-            footerBuilder.append("╩");
             footerBuilder.append("═".repeat(maxTransitionWidths.get(letter) + 2));
+            footerBuilder.append("╩");
         }
+        footerBuilder.append("═".repeat(maxStateWidth + 2));
+        footerBuilder.append("╩");
+        footerBuilder.append("═".repeat(maxTypeWidth + 2));
         footerBuilder.append("╝");
         System.out.println(footerBuilder);
     }
 
-    private Set<Etat> getNextStates(Etat state, String symbol) {
-        Set<Etat> result = new HashSet<>();
-        for (Transition transition : this.transitions) {
-            if (transition.getProvenance().equals(state) && transition.getLibelle().equals(symbol)) {
-                result.add(transition.getDestination());
-            }
-        }
-        return result;
-    }
-
-    private String stateSetToString(Set<Etat> states) {
-        return states.stream().map(Etat::getName).sorted().collect(Collectors.joining("."));
-    }
-
+    // Fonction pour obtenir toutes les transitions d'un état donné
     public ArrayList<Transition> getTransitionsByProvenance(Etat etat) {
         ArrayList<Transition> transitions = new ArrayList<Transition>();
         for (Transition transition : this.transitions) {
@@ -258,17 +234,7 @@ public class Automate {
         return transitions;
     }
 
-    public ArrayList<Transition> getTransitionsbyDestination(Etat etat) {
-        ArrayList<Transition> transitions = new ArrayList<Transition>();
-        for(Transition transition : this.transitions) {
-            if(Objects.equals(transition.getDestination().getName(), etat.getName())) {
-                transitions.add((transition));
-            }
-        }
-
-        return transitions;
-    }
-
+    // Fonction pour obtenir une transition spécifique d'un état donné pour un symbole spécifique
     public Transition getTransition(Etat etat, String symbole) {
         for(Transition transition: this.getTransitionsByProvenance(etat)) {
             if(transition.getLibelle().equals(symbole)) {
@@ -277,6 +243,22 @@ public class Automate {
         }
 
         return null;
+    }
+
+    // Fonction pour obtenir les états suivants d'un état donné pour un symbole spécifique
+    private Set<Etat> getNextStates(Etat state, String symbol) {
+        Set<Etat> nextStates = new HashSet<>();
+        for (Transition trans : transitions) {
+            if (trans.getProvenance().equals(state) && trans.getLibelle().equals(symbol)) {
+                nextStates.add(trans.getDestination());
+            }
+        }
+        return nextStates;
+    }
+
+    // Fonction pour convertir un ensemble d'états en une chaîne représentant l'état DFA
+    private String stateSetToString(Set<Etat> states) {
+        return states.stream().map(Etat::getName).sorted().collect(Collectors.joining("."));
     }
 
     /******************************************************************/
@@ -381,80 +363,93 @@ public class Automate {
     /*                       DETERMINISATION                          */
     /******************************************************************/
 
-    public boolean isDeterminise() {
-        // Check every state to ensure only one transition per symbol in the alphabet
-        for (Etat etat : etats) {
-            ArrayList<Transition> transitionsFromState = getTransitionsByProvenance(etat);
-
-            // Use a set to track symbols for which transitions exist
+    public boolean isDeterministe() {
+        // Pour chaque état dans l'automate
+        for (Etat etat : this.etats) {
+            // Créer un ensemble pour suivre les symboles déjà traités pour cet état
             HashSet<String> seenSymbols = new HashSet<>();
 
+            // Obtenir toutes les transitions à partir de cet état
+            ArrayList<Transition> transitionsFromState = getTransitionsByProvenance(etat);
+
+            // Examiner chaque transition
             for (Transition transition : transitionsFromState) {
                 String symbol = transition.getLibelle();
 
-                // If we see the same symbol twice for this state, it's not deterministic
+                // Vérifier si une transition pour ce symbole a déjà été vue
                 if (seenSymbols.contains(symbol)) {
-                    return false;  // Not deterministic
+                    // Si oui, alors il y a plus d'une transition pour un symbole dans cet état, non déterministe
+                    return false;
                 }
+                // Ajouter ce symbole à l'ensemble des symboles vus
                 seenSymbols.add(symbol);
+            }
+
+            // Vérifier si tous les symboles de l'alphabet sont couverts
+            if (seenSymbols.size() != this.alphabet.size()) {
+                // Si tous les symboles ne sont pas couverts, l'automate n'est pas complet, donc pas déterministe
+                // Note: cette partie est optionnelle en fonction de votre définition de déterminisme
+                // Si votre définition de DFA inclut qu'il doit être complet, décommentez la ligne suivante
+                // return false;
             }
         }
 
-        // If we've checked all states and found no conflicts, the automaton is deterministic
+        // Si aucune condition de non-déterminisme n'a été rencontrée, l'automate est déterministe
         return true;
     }
 
-
     public void determinise() {
-        // Map pour suivre les nouveaux états (clé : nom combiné, valeur : ensemble d'états)
-        Map<String, Set<Etat>> newEtatsMap = new HashMap<>();
-        // Liste des transitions pour l'automate déterministe
-        List<Transition> newTransitions = new ArrayList<>();
-        // Queue pour gérer les nouveaux états à traiter
-        Queue<Set<Etat>> queue = new LinkedList<>();
 
-        // Créer l'état initial du déterministe
-        Set<Etat> initialSet = new HashSet<>(this.etatsInitiaux);
-        String initialName = initialSet.stream().map(Etat::getName).sorted().collect(Collectors.joining());
-        newEtatsMap.put(initialName, initialSet);
-        queue.add(initialSet);
+        if(this.isComplete()) {
+            Map<Set<Etat>, Etat> etatsDFA = new HashMap<>(); // Carte des ensembles d'états aux nouveaux états DFA
+            Queue<Set<Etat>> queue = new LinkedList<>(); // File pour les ensembles d'états à traiter
+            List<Transition> newTransitions = new ArrayList<>(); // Nouvelles transitions pour le DFA
 
-        while (!queue.isEmpty()) {
-            Set<Etat> currentSet = queue.poll();
-            String currentName = currentSet.stream().map(Etat::getName).sorted().collect(Collectors.joining());
+            // Créer l'état initial du DFA
+            Set<Etat> initialSet = new HashSet<>(etatsInitiaux);
+            Etat initialState = new Etat(stateSetToString(initialSet));
+            etatsDFA.put(initialSet, initialState);
+            queue.add(initialSet);
 
-            // Pour chaque symbole de l'alphabet
-            for (String symbol : this.alphabet) {
-                Set<Etat> nextSet = new HashSet<>();
-                for (Etat state : currentSet) {
-                    nextSet.addAll(getNextStates(state, symbol));
+            while (!queue.isEmpty()) {
+                Set<Etat> currentSet = queue.poll();
+                Etat currentDFAState = etatsDFA.get(currentSet);
+
+                // Ajouter l'état DFA aux états finaux si nécessaire
+                if (currentSet.stream().anyMatch(etatsTerminaux::contains)) {
+                    etatsTerminaux.add(currentDFAState);
                 }
-                if (!nextSet.isEmpty()) {
-                    String nextName = nextSet.stream().map(Etat::getName).sorted().collect(Collectors.joining());
-                    if (!newEtatsMap.containsKey(nextName)) {
-                        newEtatsMap.put(nextName, nextSet);
-                        queue.add(nextSet);
+
+                for (String sym : alphabet) {
+                    Set<Etat> nextStateSet = new HashSet<>();
+                    for (Etat etat : currentSet) {
+                        nextStateSet.addAll(getNextStates(etat, sym));
                     }
-                    newTransitions.add(new Transition(new Etat(currentName), new Etat(nextName), symbol));
+
+                    if (!nextStateSet.isEmpty()) {
+                        Etat nextState;
+                        if (!etatsDFA.containsKey(nextStateSet)) {
+                            nextState = new Etat(stateSetToString(nextStateSet));
+                            etatsDFA.put(nextStateSet, nextState);
+                            queue.add(nextStateSet);
+                        } else {
+                            nextState = etatsDFA.get(nextStateSet);
+                        }
+
+                        newTransitions.add(new Transition(currentDFAState, nextState, sym));
+                    }
                 }
             }
-        }
 
-        // Réinitialiser les états et transitions de l'automate pour utiliser les nouveaux
-        this.etats.clear();
-        this.transitions.clear();
-        newEtatsMap.forEach((name, set) -> {
-            Etat newState = new Etat(name);
-            this.etats.add(newState);
-            if (set.stream().anyMatch(Etat::isFinal)) {
-                this.etatsTerminaux.add(newState);
-            }
-            if (name.equals(initialName)) {
-                this.etatsInitiaux.clear();
-                this.etatsInitiaux.add(newState);
-            }
-        });
-        this.transitions.addAll(newTransitions);
+            // Réinitialiser et mettre à jour l'automate avec les nouvelles structures DFA
+            etats.clear();
+            etats.addAll(etatsDFA.values());
+            transitions = (ArrayList<Transition>) newTransitions;
+            etatsInitiaux.clear();
+            etatsInitiaux.add(initialState);
+        } else {
+            System.out.println("[*] L'automate n'est pas complet");
+        }
     }
 
     /******************************************************************/
@@ -466,7 +461,7 @@ public class Automate {
      * L'automate doit être déterministe et complet pour que cette opération soit valide.
      */
     public void complementarize() {
-        if (this.isDeterminise() && this.isComplete()) {
+        if (this.isDeterministe() && this.isComplete()) {
             ArrayList<Etat> oldEtatsInitiaux = this.getEtatsInitiaux();
             this.setEtatsInitiaux(this.getEtatsInitiaux());
             this.setEtatsTerminaux(oldEtatsInitiaux);

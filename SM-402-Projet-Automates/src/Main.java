@@ -129,6 +129,7 @@ public class Main {
 
                                 default:
                                     System.out.println("[*] Choix invalide !");
+                                    scanner.nextLine();
                                     break;
                             }
                         }

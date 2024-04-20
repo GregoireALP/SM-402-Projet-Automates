@@ -1,3 +1,5 @@
+import java.util.Objects;
+
 public class Transition {
 
     private Etat provenance;
@@ -11,14 +13,6 @@ public class Transition {
         this.libelle = libelle;
     }
 
-    public void afficherTransition() {
-        System.out.println(this.provenance.getName() + "--" + this.libelle + "->" + this.destination.getName());
-    }
-
-    public String toString() {
-        return this.provenance.getName() + " --" + this.libelle + "--> " + this.destination.getName();
-    }
-
     @Override
     public boolean equals(Object obj) {
 
@@ -30,7 +24,7 @@ public class Transition {
 
             final Transition transition = (Transition) obj;
 
-            if(transition.getLibelle() == this.libelle && transition.getDestination().getName() == this.destination.getName() && transition.getProvenance().getName() == this.provenance.getName()) {
+            if(Objects.equals(transition.getLibelle(), this.libelle) && Objects.equals(transition.getDestination().getName(), this.destination.getName()) && Objects.equals(transition.getProvenance().getName(), this.provenance.getName())) {
                 isEqual = true;
             }
 
