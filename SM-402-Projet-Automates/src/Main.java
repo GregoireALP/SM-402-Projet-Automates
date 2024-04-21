@@ -45,7 +45,7 @@ public class Main {
                         int res = scanner.nextInt();
 
                         try {
-                            File file = new File(path + res + ".txt");
+                            File file = new File(path + "E2-%s.txt".formatted(res));
                             if(!file.exists()) {
                                 System.out.println("[!] Automate introuvable");
                                 continue;

@@ -400,56 +400,52 @@ public class Automate {
 
     public void determinise() {
 
-        if(this.isComplete()) {
-            Map<Set<Etat>, Etat> etatsDFA = new HashMap<>(); // Carte des ensembles d'états aux nouveaux états DFA
-            Queue<Set<Etat>> queue = new LinkedList<>(); // File pour les ensembles d'états à traiter
-            List<Transition> newTransitions = new ArrayList<>(); // Nouvelles transitions pour le DFA
+        Map<Set<Etat>, Etat> etatsDFA = new HashMap<>(); // Carte des ensembles d'états aux nouveaux états DFA
+        Queue<Set<Etat>> queue = new LinkedList<>(); // File pour les ensembles d'états à traiter
+        List<Transition> newTransitions = new ArrayList<>(); // Nouvelles transitions pour le DFA
 
-            // Créer l'état initial du DFA
-            Set<Etat> initialSet = new HashSet<>(etatsInitiaux);
-            Etat initialState = new Etat(stateSetToString(initialSet));
-            etatsDFA.put(initialSet, initialState);
-            queue.add(initialSet);
+        // Créer l'état initial du DFA
+        Set<Etat> initialSet = new HashSet<>(etatsInitiaux);
+        Etat initialState = new Etat(stateSetToString(initialSet));
+        etatsDFA.put(initialSet, initialState);
+        queue.add(initialSet);
 
-            while (!queue.isEmpty()) {
-                Set<Etat> currentSet = queue.poll();
-                Etat currentDFAState = etatsDFA.get(currentSet);
+        while (!queue.isEmpty()) {
+            Set<Etat> currentSet = queue.poll();
+            Etat currentDFAState = etatsDFA.get(currentSet);
 
-                // Ajouter l'état DFA aux états finaux si nécessaire
-                if (currentSet.stream().anyMatch(etatsTerminaux::contains)) {
-                    etatsTerminaux.add(currentDFAState);
-                }
-
-                for (String sym : alphabet) {
-                    Set<Etat> nextStateSet = new HashSet<>();
-                    for (Etat etat : currentSet) {
-                        nextStateSet.addAll(getNextStates(etat, sym));
-                    }
-
-                    if (!nextStateSet.isEmpty()) {
-                        Etat nextState;
-                        if (!etatsDFA.containsKey(nextStateSet)) {
-                            nextState = new Etat(stateSetToString(nextStateSet));
-                            etatsDFA.put(nextStateSet, nextState);
-                            queue.add(nextStateSet);
-                        } else {
-                            nextState = etatsDFA.get(nextStateSet);
-                        }
-
-                        newTransitions.add(new Transition(currentDFAState, nextState, sym));
-                    }
-                }
+            // Ajouter l'état DFA aux états finaux si nécessaire
+            if (currentSet.stream().anyMatch(etatsTerminaux::contains)) {
+                etatsTerminaux.add(currentDFAState);
             }
 
-            // Réinitialiser et mettre à jour l'automate avec les nouvelles structures DFA
-            etats.clear();
-            etats.addAll(etatsDFA.values());
-            transitions = (ArrayList<Transition>) newTransitions;
-            etatsInitiaux.clear();
-            etatsInitiaux.add(initialState);
-        } else {
-            System.out.println("[*] L'automate n'est pas complet");
+            for (String sym : alphabet) {
+                Set<Etat> nextStateSet = new HashSet<>();
+                for (Etat etat : currentSet) {
+                    nextStateSet.addAll(getNextStates(etat, sym));
+                }
+
+                if (!nextStateSet.isEmpty()) {
+                    Etat nextState;
+                    if (!etatsDFA.containsKey(nextStateSet)) {
+                        nextState = new Etat(stateSetToString(nextStateSet));
+                        etatsDFA.put(nextStateSet, nextState);
+                        queue.add(nextStateSet);
+                    } else {
+                        nextState = etatsDFA.get(nextStateSet);
+                    }
+
+                    newTransitions.add(new Transition(currentDFAState, nextState, sym));
+                }
+            }
         }
+
+        // Réinitialiser et mettre à jour l'automate avec les nouvelles structures DFA
+        etats.clear();
+        etats.addAll(etatsDFA.values());
+        transitions = (ArrayList<Transition>) newTransitions;
+        etatsInitiaux.clear();
+        etatsInitiaux.add(initialState);
     }
 
     /******************************************************************/
@@ -462,9 +458,18 @@ public class Automate {
      */
     public void complementarize() {
         if (this.isDeterministe() && this.isComplete()) {
-            ArrayList<Etat> oldEtatsInitiaux = this.getEtatsInitiaux();
-            this.setEtatsInitiaux(this.getEtatsInitiaux());
-            this.setEtatsTerminaux(oldEtatsInitiaux);
+
+
+            ArrayList<Etat> newFinalStates = new ArrayList<>();
+
+            for(Etat etat: this.getEtats()) {
+                if(!this.getEtatsTerminaux().contains(etat)) {
+                    newFinalStates.add(etat);
+                }
+            }
+
+            this.setEtatsTerminaux(newFinalStates);
+
         } else {
             System.out.println("[*] L'automate n'est pas complet et deterministe");
         }
@@ -475,7 +480,11 @@ public class Automate {
     /*                       WORDS RECOGNIZATION                      */
     /******************************************************************/
 
-
+    /**
+     * Recognize a word using the current automaton.
+     * @param word The word to recognize
+     * @return True if the word is accepted by the automaton, false otherwise
+     */
     public boolean recognize(String word) {
         Set<Etat> currentStates = new HashSet<>(this.etatsInitiaux); // Start from all initial states
 
