@@ -136,22 +136,22 @@ public class Automate {
 
     // Fonction pour afficher l'automate
     public void afficherAutomate() {
-        int maxStateWidth = "Etat".length();  // Start with header width
-        int maxTypeWidth = "Type".length();  // Start with header width
+        int maxStateWidth = "Etat".length();  // Largeur initiale basée sur le mot 'Etat'
+        int maxTypeWidth = "Type".length();  // Largeur initiale basée sur le mot 'Type'
         Map<String, Integer> maxTransitionWidths = new HashMap<>();
 
-        // Initialize maxTransitionWidths with alphabet headers, and adjust for contents
+        // Initialiser avec les largeurs des entêtes des symboles de l'alphabet
         for (String letter : this.alphabet) {
             maxTransitionWidths.put(letter, letter.length());
         }
 
-        // Calculate max widths for states, types, and transitions
+        // Calculer les largeurs maximales pour les états, types et transitions
         for (Etat etat : this.etats) {
             maxStateWidth = Math.max(maxStateWidth, etat.getName().length());
             ArrayList<Transition> transitions = this.getTransitionsByProvenance(etat);
             for (Transition transition : transitions) {
                 String symbol = transition.getLibelle();
-                // Accumulate destinations
+                // Concaténer les noms de destinations pour le même symbole
                 String destNames = transitions.stream()
                         .filter(t -> t.getProvenance().equals(etat) && t.getLibelle().equals(symbol))
                         .map(t -> t.getDestination().getName())
@@ -161,68 +161,65 @@ public class Automate {
             }
         }
 
-        // Build the header format string
-        StringBuilder headerBuilder = new StringBuilder("╔");
-        headerBuilder.append("═".repeat(maxTypeWidth + 2));
-        headerBuilder.append("╦");
-        headerBuilder.append("═".repeat(maxStateWidth + 2));
+        // Construction de l'en-tête
+        System.out.print("╔");
+        System.out.print("═".repeat(maxTypeWidth + 2));
+        System.out.print("╦");
+        System.out.print("═".repeat(maxStateWidth + 2));
         for (String letter : this.alphabet) {
-            headerBuilder.append("╦");
-            headerBuilder.append("═".repeat(maxTransitionWidths.get(letter) + 2));
+            System.out.print("╦");
+            System.out.print("═".repeat(maxTransitionWidths.get(letter) + 2));
         }
-        headerBuilder.append("╗");
-        System.out.println(headerBuilder);
+        System.out.println("╗");
 
-        // Print header
-        String headerFormat = "║ %-"+maxTypeWidth+"s ║ %-"+maxStateWidth+"s ║ ";
-        System.out.print(String.format(headerFormat, "Type", "Etat"));
+        // Affichage des entêtes
+        System.out.print("║ Type ");
+        System.out.print("║ Etat ".substring(0, maxStateWidth + 1));
         for (String letter : this.alphabet) {
-            System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", letter));
+            System.out.print("║ " + letter + " ".repeat(maxTransitionWidths.get(letter) - letter.length() + 1));
         }
-        System.out.println();
+        System.out.println("║");
 
-        // Print each state row
+        // Affichage des lignes pour chaque état
         for (Etat etat : this.etats) {
             String type = this.etatsInitiaux.contains(etat) ? "E" : " ";
             type = this.etatsTerminaux.contains(etat) ? type + "S" : type;
 
-            StringBuilder rowBuilder = new StringBuilder("╠");
-            rowBuilder.append("═".repeat(maxTypeWidth + 2));
-            rowBuilder.append("╬");
-            rowBuilder.append("═".repeat(maxStateWidth + 2));
-
+            System.out.print("╠");
+            System.out.print("═".repeat(maxTypeWidth + 2));
+            System.out.print("╬");
+            System.out.print("═".repeat(maxStateWidth + 2));
             for (String letter : this.alphabet) {
-                rowBuilder.append("╬");
-                rowBuilder.append("═".repeat(maxTransitionWidths.get(letter) + 2));
+                System.out.print("╬");
+                System.out.print("═".repeat(maxTransitionWidths.get(letter) + 2));
             }
-            rowBuilder.append("╣");
-            System.out.println(rowBuilder.toString());
+            System.out.println("╣");
 
-            System.out.print(String.format(headerFormat, type.trim(), etat.getName()));
+            System.out.print("║ " + type + " ".repeat(maxTypeWidth - type.length() + 1));
+            System.out.print("║ " + etat.getName() + " ".repeat(maxStateWidth - etat.getName().length() + 1));
             for (String letter : this.alphabet) {
                 String destNames = transitions.stream()
                         .filter(t -> t.getProvenance().equals(etat) && t.getLibelle().equals(letter))
                         .map(t -> t.getDestination().getName())
                         .distinct()
                         .collect(Collectors.joining(", "));
-
-                System.out.print(String.format("%-"+maxTransitionWidths.get(letter)+"s ║ ", destNames.isEmpty() ? "-" : destNames));
+                System.out.print("║ " + (destNames.isEmpty() ? "-" : destNames) + " ".repeat(maxTransitionWidths.get(letter) - destNames.length() + 1));
             }
-            System.out.println();
+            System.out.println("║");
         }
-        // Closing border
-        StringBuilder footerBuilder = new StringBuilder("╚");
-        for (String letter : this.alphabet) {
-            footerBuilder.append("═".repeat(maxTransitionWidths.get(letter) + 2));
-            footerBuilder.append("╩");
-        }
-        footerBuilder.append("═".repeat(maxStateWidth + 2));
-        footerBuilder.append("╩");
-        footerBuilder.append("═".repeat(maxTypeWidth + 2));
-        footerBuilder.append("╝");
-        System.out.println(footerBuilder);
-    }
 
+        // Pied de page
+        System.out.print("╚");
+        System.out.print("═".repeat(maxTypeWidth + 2));
+        System.out.print("╩");
+        System.out.print("═".repeat(maxStateWidth + 2));
+        for (String letter : this.alphabet) {
+            System.out.print("╩");
+            System.out.print("═".repeat(maxTransitionWidths.get(letter) + 2));
+        }
+        System.out.println("╝");
+    }
+1
     // Fonction pour obtenir toutes les transitions d'un état donné
     public ArrayList<Transition> getTransitionsByProvenance(Etat etat) {
         ArrayList<Transition> transitions = new ArrayList<Transition>();
@@ -400,52 +397,56 @@ public class Automate {
 
     public void determinise() {
 
-        Map<Set<Etat>, Etat> etatsDFA = new HashMap<>(); // Carte des ensembles d'états aux nouveaux états DFA
-        Queue<Set<Etat>> queue = new LinkedList<>(); // File pour les ensembles d'états à traiter
-        List<Transition> newTransitions = new ArrayList<>(); // Nouvelles transitions pour le DFA
+        if(!this.isDeterministe()) {
+            Map<Set<Etat>, Etat> etatsDFA = new HashMap<>(); // Carte des ensembles d'états aux nouveaux états DFA
+            Queue<Set<Etat>> queue = new LinkedList<>(); // File pour les ensembles d'états à traiter
+            List<Transition> newTransitions = new ArrayList<>(); // Nouvelles transitions pour le DFA
 
-        // Créer l'état initial du DFA
-        Set<Etat> initialSet = new HashSet<>(etatsInitiaux);
-        Etat initialState = new Etat(stateSetToString(initialSet));
-        etatsDFA.put(initialSet, initialState);
-        queue.add(initialSet);
+            // Créer l'état initial du DFA
+            Set<Etat> initialSet = new HashSet<>(etatsInitiaux);
+            Etat initialState = new Etat(stateSetToString(initialSet));
+            etatsDFA.put(initialSet, initialState);
+            queue.add(initialSet);
 
-        while (!queue.isEmpty()) {
-            Set<Etat> currentSet = queue.poll();
-            Etat currentDFAState = etatsDFA.get(currentSet);
+            while (!queue.isEmpty()) {
+                Set<Etat> currentSet = queue.poll();
+                Etat currentDFAState = etatsDFA.get(currentSet);
 
-            // Ajouter l'état DFA aux états finaux si nécessaire
-            if (currentSet.stream().anyMatch(etatsTerminaux::contains)) {
-                etatsTerminaux.add(currentDFAState);
-            }
-
-            for (String sym : alphabet) {
-                Set<Etat> nextStateSet = new HashSet<>();
-                for (Etat etat : currentSet) {
-                    nextStateSet.addAll(getNextStates(etat, sym));
+                // Ajouter l'état DFA aux états finaux si nécessaire
+                if (currentSet.stream().anyMatch(etatsTerminaux::contains)) {
+                    etatsTerminaux.add(currentDFAState);
                 }
 
-                if (!nextStateSet.isEmpty()) {
-                    Etat nextState;
-                    if (!etatsDFA.containsKey(nextStateSet)) {
-                        nextState = new Etat(stateSetToString(nextStateSet));
-                        etatsDFA.put(nextStateSet, nextState);
-                        queue.add(nextStateSet);
-                    } else {
-                        nextState = etatsDFA.get(nextStateSet);
+                for (String sym : alphabet) {
+                    Set<Etat> nextStateSet = new HashSet<>();
+                    for (Etat etat : currentSet) {
+                        nextStateSet.addAll(getNextStates(etat, sym));
                     }
 
-                    newTransitions.add(new Transition(currentDFAState, nextState, sym));
+                    if (!nextStateSet.isEmpty()) {
+                        Etat nextState;
+                        if (!etatsDFA.containsKey(nextStateSet)) {
+                            nextState = new Etat(stateSetToString(nextStateSet));
+                            etatsDFA.put(nextStateSet, nextState);
+                            queue.add(nextStateSet);
+                        } else {
+                            nextState = etatsDFA.get(nextStateSet);
+                        }
+
+                        newTransitions.add(new Transition(currentDFAState, nextState, sym));
+                    }
                 }
             }
-        }
 
-        // Réinitialiser et mettre à jour l'automate avec les nouvelles structures DFA
-        etats.clear();
-        etats.addAll(etatsDFA.values());
-        transitions = (ArrayList<Transition>) newTransitions;
-        etatsInitiaux.clear();
-        etatsInitiaux.add(initialState);
+            // Réinitialiser et mettre à jour l'automate avec les nouvelles structures DFA
+            etats.clear();
+            etats.addAll(etatsDFA.values());
+            transitions = (ArrayList<Transition>) newTransitions;
+            etatsInitiaux.clear();
+            etatsInitiaux.add(initialState);
+        } else {
+            System.out.println("[!] Cet automate est déjà déterministe");
+        }
     }
 
     /******************************************************************/

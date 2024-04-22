@@ -1,5 +1,4 @@
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
 import java.util.Scanner;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -11,7 +10,13 @@ public class Main {
 
         Scanner scanner = new Scanner(System.in);
         boolean isRunning = true;
-        String path = "C:\\Users\\grego\\Documents\\GitHub\\SM-402-Projet-Automates\\SM-402-Projet-Automates\\src\\core\\";
+
+
+        /******************************/
+        /* REMPLACER PAR SON CHEMIN */
+        String path = "C:\\Users\\grego\\Documents\\GitHub\\SM-402-Projet-Automates\\SM-402-Projet-Automates\\src\\core\\E2-";
+        /******************************/
+
         String menu = """
                                 _                        _      \s
                      /\\        | |                      | |     \s
@@ -45,7 +50,7 @@ public class Main {
                         int res = scanner.nextInt();
 
                         try {
-                            File file = new File(path + "E2-%s.txt".formatted(res));
+                            File file = new File(path + res + ".txt");
                             if(!file.exists()) {
                                 System.out.println("[!] Automate introuvable");
                                 continue;
@@ -171,6 +176,5 @@ public class Main {
                 scanner.nextLine();
             }
         }
-
     }
 }

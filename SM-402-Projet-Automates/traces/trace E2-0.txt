@@ -1,0 +1,27 @@
+Automate E2-0Deteministe et complet
+╔══════╦══════╗
+║ Type ║ Etat ║ 
+╠══════╬══════╣
+║ E    ║      ║ 
+╠══════╬══════╣
+║      ║ P    ║ 
+╚══════╩══════╝
+
+Automate E2-0Standardiser
+[!] Cette automate est déjà standard
+╔══════╦══════╗
+║ Type ║ Etat ║ 
+╠══════╬══════╣
+║ E    ║      ║ 
+╠══════╬══════╣
+║      ║ P    ║ 
+╚══════╩══════╝
+
+Automate E2-0Complementaire
+╔══════╦══════╗
+║ Type ║ Etat ║ 
+╠══════╬══════╣
+║ ES   ║      ║ 
+╠══════╬══════╣
+║ S    ║ P    ║ 
+╚══════╩══════╝
