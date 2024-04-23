@@ -134,7 +134,6 @@ public class Automate {
         return null;
     }
 
-    // Fonction pour afficher l'automate
     public void afficherAutomate() {
         int maxStateWidth = "Etat".length();  // Largeur initiale basée sur le mot 'Etat'
         int maxTypeWidth = "Type".length();  // Largeur initiale basée sur le mot 'Type'
@@ -151,7 +150,6 @@ public class Automate {
             ArrayList<Transition> transitions = this.getTransitionsByProvenance(etat);
             for (Transition transition : transitions) {
                 String symbol = transition.getLibelle();
-                // Concaténer les noms de destinations pour le même symbole
                 String destNames = transitions.stream()
                         .filter(t -> t.getProvenance().equals(etat) && t.getLibelle().equals(symbol))
                         .map(t -> t.getDestination().getName())
@@ -173,8 +171,8 @@ public class Automate {
         System.out.println("╗");
 
         // Affichage des entêtes
-        System.out.print("║ Type ");
-        System.out.print("║ Etat ".substring(0, maxStateWidth + 1));
+        System.out.print("║ " + "Type" + " ".repeat(maxTypeWidth - 4 + 1));
+        System.out.print("║ " + "Etat" + " ".repeat(maxStateWidth - 4 + 1));
         for (String letter : this.alphabet) {
             System.out.print("║ " + letter + " ".repeat(maxTransitionWidths.get(letter) - letter.length() + 1));
         }
@@ -198,12 +196,13 @@ public class Automate {
             System.out.print("║ " + type + " ".repeat(maxTypeWidth - type.length() + 1));
             System.out.print("║ " + etat.getName() + " ".repeat(maxStateWidth - etat.getName().length() + 1));
             for (String letter : this.alphabet) {
+                ArrayList<Transition> transitions = getTransitionsByProvenance(etat);
                 String destNames = transitions.stream()
                         .filter(t -> t.getProvenance().equals(etat) && t.getLibelle().equals(letter))
                         .map(t -> t.getDestination().getName())
                         .distinct()
                         .collect(Collectors.joining(", "));
-                System.out.print("║ " + (destNames.isEmpty() ? "-" : destNames) + " ".repeat(maxTransitionWidths.get(letter) - destNames.length() + 1));
+                System.out.print("║ " + (destNames.isEmpty() ? "" : destNames) + " ".repeat(maxTransitionWidths.get(letter) - destNames.length() + 1));
             }
             System.out.println("║");
         }
@@ -219,7 +218,7 @@ public class Automate {
         }
         System.out.println("╝");
     }
-1
+
     // Fonction pour obtenir toutes les transitions d'un état donné
     public ArrayList<Transition> getTransitionsByProvenance(Etat etat) {
         ArrayList<Transition> transitions = new ArrayList<Transition>();
@@ -280,17 +279,21 @@ public class Automate {
      * Cet état est utilisé pour toutes les transitions non définies dans l'automate initial.
      */
     public void complete() {
-        Etat etatPoubelle = new Etat("P"); // Créer un nouvel état poubelle
-        this.etats.add(etatPoubelle); // Ajouter l'état poubelle à la liste des états
+        if(!this.isComplete()) {
+            Etat etatPoubelle = new Etat("P"); // Créer un nouvel état poubelle
+            this.etats.add(etatPoubelle); // Ajouter l'état poubelle à la liste des états
 
-        // Vérifier chaque état pour chaque symbole de l'alphabet
-        for (Etat etat : this.etats) {
-            for (String symbole : this.alphabet) {
-                if (getTransition(etat, symbole) == null) {
-                    // Si aucune transition n'existe pour un symbole donné, ajouter une transition vers l'état poubelle
-                    this.transitions.add(new Transition(etat, etatPoubelle, symbole));
+            // Vérifier chaque état pour chaque symbole de l'alphabet
+            for (Etat etat : this.etats) {
+                for (String symbole : this.alphabet) {
+                    if (getTransition(etat, symbole) == null) {
+                        // Si aucune transition n'existe pour un symbole donné, ajouter une transition vers l'état poubelle
+                        this.transitions.add(new Transition(etat, etatPoubelle, symbole));
+                    }
                 }
             }
+        } else {
+            System.out.println("[!] Cet automate est déjà complet");
         }
     }
 
